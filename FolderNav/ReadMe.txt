@@ -66,3 +66,20 @@ the app is launched.
 However, as a robustness precaution, the presence is checked at every 
 launch, and if any of the folders are missing, they are re-created as
 they were at the first launch of the app.
+
+
+
+iCloud
+
+## Important ##
+
+From the documentation for NSFileManager:
+
+Specify the container ID of the cloud-based storage container. The string you specify must not contain wildcards and must be of the form <TEAMID>.<CONTAINER>, where <TEAMID> is your development team ID and <CONTAINER> describes the bundle identifier of the container you want to access. The container identifiers for your application must be declared in the com.apple.developer.ubiquity-container-identifiers entitlement.
+If you specify nil, this method returns the first container listed in the com.apple.developer.ubiquity-container-identifiers entitlement.
+
+This is currently set to nil, i.e., it takes the first value in com.apple.developer.ubiquity-container-identifiers in the entitlements file.
+
+
+
+

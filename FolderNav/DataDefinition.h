@@ -45,9 +45,23 @@
 #define FOLDER_TITLE_EN_DRAFTS          @"Drafts"
 
 
+// Icon file names
+
+#define FOLDER_ICON_CURRENT_UNFILED @"currentUnfiledFolderIcon"
+#define FOLDER_ICON_DRAFTS  @"draftsFolderIcon"
+#define FOLDER_ICON_TRASH   @"trashFolderIcon"
+
+
+
 // Core Data strings
 
 #define FOLDER_FETCH_CACHE_NAME @"Folders"
 
+
+
+// Notification ids for use with iCloud updates
+
+#define NOTIFICATION_DATABASE_MERGED          @"DatabaseMerged"
+#define NOTIFICATION_PERSISTENT_STORE_CHANGED @"PersistentStoreChanged"
 
 #endif

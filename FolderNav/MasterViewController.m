@@ -29,6 +29,7 @@
 @implementation MasterViewController {
     // "Private" ivars
     NSDictionary *alertUserInfo;
+    NSIndexPath  *currentSelectedIndexPath;
 }
 
 @synthesize folderContentsViewController = _detailViewController;
@@ -161,10 +162,7 @@
     // Save the context.
     NSError *error = nil;
     if (![context save: &error]) {
-        // Replace this implementation with code to handle the error appropriately.
-        // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
-        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        abort();
+        PanicExit(error);
     }
     
     ExitFunction();    
@@ -184,10 +182,7 @@
     // Save the context.
     NSError *error = nil;
     if (![context save: &error]) {
-        // Replace this implementation with code to handle the error appropriately.
-        // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
-        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        abort();
+        PanicExit(error);
     }
 
     ExitFunction();    
@@ -228,10 +223,7 @@
     
     NSError *error = nil;
     if (![context save:&error]) {
-        // Replace this implementation with code to handle the error appropriately.
-        // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
-        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        abort();
+        PanicExit(error);
     }
     
     // Set detail view value to nil.
@@ -262,7 +254,7 @@
         
         if ( buttonIndex == 1 ) {
             NSString *nameEntered = [[alertView textFieldAtIndex:0] text];
-            NSLog(@"New folder, name entered: %@", nameEntered);
+
             [self createNewFolderWithName: nameEntered];
         }
     }
@@ -277,9 +269,7 @@
             // return to its neutral state.
             
             [self renameFolderAtIndexPath:indexPath toName:nameEntered];
-            
-            NSLog(@"Folder renamed to: %@", nameEntered);
-            
+                        
             // Make sure the table view is updated with the new name
             NSArray *array = [NSArray arrayWithObject: indexPath];
             [self.tableView reloadRowsAtIndexPaths: array
@@ -293,7 +283,7 @@
     else if ( alertView.tag == ALERT_VIEW_TAG_DELETE_FOLDER ) {
         
         if ( buttonIndex == 1 ) {
-            NSLog(@"User really, really wants to delete folder");
+            DLog(@"User really, really wants to delete folder");
             
             // Get the index path the same way as for the rename case
             NSIndexPath *indexPath = [alertUserInfo valueForKey: @"indexPath"];
@@ -418,11 +408,35 @@
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     EnterFunction();
+    
     if ( !self.editing ) {
         
-        // Normal case, change the right hand pane's content
-        Folder *folder = [[self fetchedResultsController] objectAtIndexPath:indexPath];
-        self.folderContentsViewController.folder = folder;
+        if ( ![currentSelectedIndexPath isEqual:indexPath] ) {
+            
+            // Normal case, change the right hand pane's content
+            Folder *folder = [[self fetchedResultsController] objectAtIndexPath:indexPath];
+            
+            self.folderContentsViewController.folder = folder;
+            
+            self.title = folder.title;
+            
+            currentSelectedIndexPath = indexPath;
+        }
+        else {
+            
+            // Selecting the same row a second time de-selects it.
+            
+            [self.tableView deselectRowAtIndexPath:indexPath animated:YES];
+            
+            currentSelectedIndexPath = nil;
+            
+            self.folderContentsViewController.folder = nil;
+            
+            self.title = nil;
+            
+            currentSelectedIndexPath = nil;
+        }
+        
     }
     else {
         
@@ -498,33 +512,30 @@
     EnterFunction();
     
     Folder *folder = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
     cell.textLabel.text = folder.title;
     
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     
-    AppDelegate *appDel = (AppDelegate *)[[UIApplication sharedApplication] delegate];
     
-    if ( indexPath.row < appDel.permanentFolderTypes.count ) {
-        // One of the permanent folders, has an icon.
-        switch (indexPath.row) {
-            case 0:
-                cell.imageView.image=[UIImage imageNamed:@"currentUnfiledFolderIcon"];
-                break;
-            case 1:
-                cell.imageView.image=[UIImage imageNamed:@"draftsFolderIcon"];
-                break;
-            case 2:
-                cell.imageView.image=[UIImage imageNamed:@"trashFolderIcon"];
-                break;
-            default:
-                cell.imageView.image=nil;
-                break;
-        }
+    if ( [folder.type isEqualToString:FOLDER_TYPE_CURRENT_UNFILED] ) {
+        cell.imageView.image=[UIImage imageNamed: FOLDER_ICON_CURRENT_UNFILED];
+    }
+    else if ( [folder.type isEqualToString:FOLDER_TYPE_DRAFTS] ) {
+        cell.imageView.image=[UIImage imageNamed: FOLDER_ICON_DRAFTS];
+    }
+    else if ( [folder.type isEqualToString:FOLDER_TYPE_TRASH] ) {
+        cell.imageView.image=[UIImage imageNamed: FOLDER_ICON_TRASH];
+    }
+    else if ( [folder.type isEqualToString:FOLDER_TYPE_USER_DEFINED] ) {
+        
+        // No folder image defined for user defined folders
+        cell.imageView.image=nil;
     }
     else {
         cell.imageView.image=nil;
     }
-        
+    
     ExitFunction();
 }
 
@@ -552,10 +563,7 @@
     
 	NSError *error = nil;
 	if (![self.fetchedResultsController performFetch:&error]) {
-	     // Replace this implementation with code to handle the error appropriately.
-	     // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
-	    NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-	    abort();
+        PanicExit(error);
 	}
     
     ExitFunction();
@@ -710,6 +718,30 @@
 
 
 
+#pragma mark -
+#pragma mark iCloud support
+
+
+// Because the app delegate now loads the NSPersistentStore into the NSPersistentStoreCoordinator asynchronously
+// we will see the NSManagedObjectContext set up before any persistent stores are registered
+// we will need to fetch again after the persistent store is loaded
+- (void)reloadFetchedResults:(NSNotification*)notification {
+    EnterFunction();
+    
+    NSError *error = nil;
+    if (![[self fetchedResultsController] performFetch:&error]) {
+        PanicExit(error);
+    }             
+    
+    if (notification) {
+        [self.tableView reloadData];
+        
+        [self.folderContentsViewController updateContents];
+    }
+    
+    ExitFunction();
+}
+
 
 
 #pragma mark -
@@ -723,9 +755,7 @@
 //
 - (void)searchBar:(UISearchBar *)theSearchBar textDidChange:(NSString *)searchText {
     EnterFunction();
-    
-    NSLog(@"Search text: %@", searchText);
-    
+        
     // Set a predicate corresponding to the search
     
     NSPredicate *p = nil;
@@ -739,9 +769,7 @@
     NSError *error = nil;
     if (![self.fetchedResultsController performFetch:&error])
     {
-        // Handle error
-        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        abort();  // Fail
+        PanicExit(error);
     } 
     
     // reload the table view

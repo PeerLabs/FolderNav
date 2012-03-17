@@ -19,7 +19,13 @@
 @property (readonly, strong, nonatomic) NSArray *permanentFolderTypes;
 @property (readonly, strong, nonatomic) NSArray *allFolderTypes;
 
+
+// A plain C function to easily exit in a panic.
+void PanicExit(NSError * err);
+
 - (void)saveContext;
 - (NSURL *)applicationDocumentsDirectory;
+
+- (void)exitWithError: (NSError *)error;
 
 @end

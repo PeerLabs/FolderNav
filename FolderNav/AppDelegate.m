@@ -13,6 +13,16 @@
 #import "DataDefinition.h"
 #import "Folder.h"
 #import "FolderContentsViewController.h"
+#import "ImageBarButtonItem.h"
+
+
+#define ALERT_VIEW_TAG_UNRECOVERABLE_ERROR 1
+
+void PanicExit(NSError * err) {
+    AppDelegate * appDel = [[UIApplication sharedApplication] delegate];
+    
+    [appDel exitWithError:err];
+}
 
 @implementation AppDelegate
 
@@ -75,55 +85,41 @@
 
     // Set title
     
-    navItem.title = @"New Title";
+    // There is no title in this app.
+    navItem.title = nil;
 
     
     // Set right hand buttons and search field on nav bar
     
-    UIBarButtonItem *searchBarItem = [self makeSearchFieldBarButtonItemWithDelegate:nil];
+    //
+    // ## Activate Search bar here ##
+    //
+    // Commenting out search bar until final designs have been decided.
+    //
+    // UIBarButtonItem *searchBarItem = [self makeSearchFieldBarButtonItemWithDelegate:
+    // detailViewController.searchBar = searchBarItem;
     
-    UIBarButtonItem *addObjectBarButtonItem = [self makeBarButtonItem:@"addButtonImage" target:detailViewController action:@selector(addObject:)];
+    UIBarButtonItem *addObjectBarButtonItem = [[ImageBarButtonItem alloc] initWithImageName:@"addButtonImage" target:detailViewController action:@selector(addObject:)];
 
-    UIBarButtonItem *archiveObjectBarButtonItem = [self makeBarButtonItem:@"archiveButtonImage"target:detailViewController action:@selector(renameObject:)];
+    UIBarButtonItem *archiveObjectBarButtonItem = [[ImageBarButtonItem alloc] initWithImageName:@"archiveButtonImage"target:detailViewController action:@selector(renameObject:)];
     
-    UIBarButtonItem *deleteObjectBarButtonItem = [self makeBarButtonItem:@"deleteButtonImage" target:detailViewController action:@selector(deleteObject:)];
+    UIBarButtonItem *deleteObjectBarButtonItem = [[ImageBarButtonItem alloc] initWithImageName:@"deleteButtonImage" target:detailViewController action:@selector(deleteObject:)];
     
     
-    navItem.rightBarButtonItems = [NSArray arrayWithObjects: deleteObjectBarButtonItem, archiveObjectBarButtonItem, addObjectBarButtonItem, searchBarItem, nil];
+    navItem.rightBarButtonItems = [NSArray arrayWithObjects: 
+                                   deleteObjectBarButtonItem,
+                                   archiveObjectBarButtonItem,
+                                   addObjectBarButtonItem, 
+                                   // Commenting out search bar
+                                   // ## Activate it here ##
+                                   //searchBarItem, 
+                                   nil];
 
     ExitFunction();    
 
     return YES;
 }
 
-
-// In order to get a UIBarButtonItem with an image, a trick is necessary:
-// 
-// 1. Make an empty view
-// 2. Make an image view to hold the image
-// 3. Make a blank button with a target and an action, like any button
-// 4. Add the image view and the button to the custom view
-// 5. Make the bar button item with the custom view
-//
-- (UIBarButtonItem *)makeBarButtonItem: (NSString *)imageName target: (id)target action: (SEL) selector
-{
-    UIView *customView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 40, 40)];
-    
-    UIButton *button = [[UIButton alloc] initWithFrame: CGRectMake(0, 0, 40, 40)];
-    button.showsTouchWhenHighlighted = YES;
-    
-    [button addTarget:target action: selector forControlEvents:UIControlEventTouchUpInside];
-    
-    UIImage *itemImage = [UIImage imageNamed: imageName];
-    
-    UIImageView *itemImageView = [[UIImageView alloc] initWithImage: itemImage];
-    itemImageView.frame = CGRectMake(8, 8, 24, 24);
-    
-    [customView addSubview:itemImageView];
-    [customView addSubview:button];
-
-    return [[UIBarButtonItem alloc] initWithCustomView:customView];
-}
 
 
 - (UIBarButtonItem *)makeSearchFieldBarButtonItemWithDelegate: (id)aDelegate
@@ -193,15 +189,66 @@
     NSManagedObjectContext *managedObjectContext = self.managedObjectContext;
     if (managedObjectContext != nil) {
         if ([managedObjectContext hasChanges] && ![managedObjectContext save:&error]) {
-             // Replace this implementation with code to handle the error appropriately.
-             // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
-            NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-            abort();
+            PanicExit(error);
         } 
     }
     
     ExitFunction();    
 }
+
+
+#pragma mark -
+#pragma mark Graceful(-ish) exit handling
+
+// This method replaces the boiler plate abort() function calls.
+// It alerts the user that there was a problem, and exits.
+//
+// Mostly used for Core Data related problems.
+//
+- (void)exitWithError: (NSError *)error {
+    EnterFunction();
+
+    NSString *errorMessage = error.localizedDescription;
+    
+    NSString *msgTitle = NSLocalizedString(@"Unrecoverable Error", @"Unrecoverable Error");
+    
+    NSString *exitButtonTitle = NSLocalizedString(@"Exit", @"Exit button title");
+    
+    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: msgTitle
+                                                    message: errorMessage
+                                                   delegate: self 
+                                          cancelButtonTitle: exitButtonTitle
+                                          otherButtonTitles: nil];
+    
+    alert.tag = ALERT_VIEW_TAG_UNRECOVERABLE_ERROR;
+    
+    [alert show];
+    
+    ExitFunction();    
+}
+
+
+- (void)alertView: (UIAlertView *)alertView didDismissWithButtonIndex: (NSInteger)buttonIndex
+{ 
+    EnterFunction();
+    
+    if ( alertView.tag == ALERT_VIEW_TAG_UNRECOVERABLE_ERROR ) {
+        [self closeDown];
+    }
+       
+    ExitFunction();    
+}
+
+
+- (void)closeDown
+{
+    EnterFunction();
+    
+    exit(0);
+
+    ExitFunction();    
+}
+
 
 #pragma mark - Core Data stack
 
@@ -212,7 +259,7 @@
     EnterFunction();
     
     if (__managedObjectContext != nil) {
-
+        
         ExitFunction();
         
         return __managedObjectContext;
@@ -220,12 +267,18 @@
     
     NSPersistentStoreCoordinator *coordinator = [self persistentStoreCoordinator];
     if (coordinator != nil) {
-        __managedObjectContext = [[NSManagedObjectContext alloc] init];
-        [__managedObjectContext setPersistentStoreCoordinator:coordinator];
+        NSManagedObjectContext* moc = [[NSManagedObjectContext alloc] initWithConcurrencyType:NSMainQueueConcurrencyType];
+        
+        [moc performBlockAndWait:^{
+            [moc setPersistentStoreCoordinator: coordinator];
+            
+            [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(mergeChangesFrom_iCloud:) name:NSPersistentStoreDidImportUbiquitousContentChangesNotification object:coordinator];
+        }];
+        __managedObjectContext = moc;
     }
     
     ExitFunction();    
-
+    
     return __managedObjectContext;
 }
 
@@ -238,14 +291,14 @@
     if (__managedObjectModel != nil) {
         
         ExitFunction();    
-
+        
         return __managedObjectModel;
     }
     NSURL *modelURL = [[NSBundle mainBundle] URLForResource:@"FolderNav" withExtension:@"momd"];
     __managedObjectModel = [[NSManagedObjectModel alloc] initWithContentsOfURL:modelURL];
     
     ExitFunction();    
-
+    
     return __managedObjectModel;
 }
 
@@ -256,48 +309,63 @@
     EnterFunction();
     
     if (__persistentStoreCoordinator != nil) {
-    
+        
         ExitFunction();    
-
+        
         return __persistentStoreCoordinator;
     }
     
     NSURL *storeURL = [[self applicationDocumentsDirectory] URLByAppendingPathComponent:@"FolderNav.sqlite"];
     
-    NSError *error = nil;
     __persistentStoreCoordinator = [[NSPersistentStoreCoordinator alloc] initWithManagedObjectModel:[self managedObjectModel]];
-    if (![__persistentStoreCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:nil error:&error]) {
-        /*
-         Replace this implementation with code to handle the error appropriately.
-         
-         abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
-         
-         Typical reasons for an error here include:
-         * The persistent store is not accessible;
-         * The schema for the persistent store is incompatible with current managed object model.
-         Check the error message to determine what the actual problem was.
-         
-         
-         If the persistent store is not accessible, there is typically something wrong with the file path. Often, a file URL is pointing into the application's resources directory instead of a writeable directory.
-         
-         If you encounter schema incompatibility errors during development, you can reduce their frequency by:
-         * Simply deleting the existing store:
-         [[NSFileManager defaultManager] removeItemAtURL:storeURL error:nil]
-         
-         * Performing automatic lightweight migration by passing the following dictionary as the options parameter: 
-         [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:YES], NSMigratePersistentStoresAutomaticallyOption, [NSNumber numberWithBool:YES], NSInferMappingModelAutomaticallyOption, nil];
-         
-         Lightweight migration will only work for a limited set of schema changes; consult "Core Data Model Versioning and Data Migration Programming Guide" for details.
-         
-         */
-        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        abort();
-    }    
+    
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    
+    // Migrate datamodel, normal options for Core Data (lightweight migration)
+    NSMutableDictionary *options = [NSMutableDictionary dictionaryWithObjectsAndKeys:
+                                    [NSNumber numberWithBool:YES], NSMigratePersistentStoresAutomaticallyOption,
+                                    [NSNumber numberWithBool:YES], NSInferMappingModelAutomaticallyOption,
+                                    nil];
+    
+    // containerID needs to match the entitlements and provisioning profile,
+    // or it can be nil. In that case it will use the first key 
+    NSString *containerID = nil;
+    
+    NSURL *cloudURL = [fileManager URLForUbiquityContainerIdentifier: containerID];
+    
+    if ( cloudURL ) {
+        // iCloud is available
+        
+        NSString* coreDataCloudContent = [[cloudURL path] stringByAppendingPathComponent:@"data"];
+        
+        cloudURL = [NSURL fileURLWithPath:coreDataCloudContent];
+        
+        NSDictionary *iCloudOptions = [NSDictionary dictionaryWithObjectsAndKeys:
+                                       @"FolderNav.store", NSPersistentStoreUbiquitousContentNameKey,
+                                       cloudURL, NSPersistentStoreUbiquitousContentURLKey,
+                                       nil];
+        
+        // Add the iCloud-specific options to the standard ones
+        [options addEntriesFromDictionary:iCloudOptions];
+    }
+    
+    NSError *error = nil;
+    
+    if (![__persistentStoreCoordinator addPersistentStoreWithType:NSSQLiteStoreType configuration:nil URL:storeURL options:options error:&error])
+    {
+        PanicExit(error);
+    }
+    
+    DLog(@"Persistent store added");
+    
+    // Notify controllers (notably, the master view controller)
+    [[NSNotificationCenter defaultCenter] postNotificationName:NOTIFICATION_PERSISTENT_STORE_CHANGED object:self userInfo:nil];
     
     ExitFunction();    
-
+    
     return __persistentStoreCoordinator;
 }
+
 
 #pragma mark - Application's Documents directory
 
@@ -369,10 +437,6 @@
         
         folder.type = FOLDER_TYPE_CURRENT_UNFILED;
         folder.title = title;
-        /*
-        [folder setValue: FOLDER_TYPE_CURRENT_UNFILED forKey: FOLDER_TYPE];
-        [folder setValue: title forKey: FOLDER_TITLE];
-         */
     }
     
 
@@ -393,10 +457,6 @@
         
         folder.type = FOLDER_TYPE_TRASH;
         folder.title = title;
-        /*
-        [folder setValue:FOLDER_TYPE_TRASH forKey: FOLDER_TYPE];
-        [folder setValue:title forKey: FOLDER_TITLE];        
-         */
     }
     
     
@@ -418,10 +478,6 @@
         folder.type = FOLDER_TYPE_DRAFTS;
         folder.title = title;
 
-        /*
-        [folder setValue:FOLDER_TYPE_DRAFTS forKey: FOLDER_TYPE];
-        [folder setValue:title forKey: FOLDER_TITLE];        
-         */
     }
     
     if (![self.managedObjectContext save:&error]) {
@@ -431,6 +487,27 @@
     ExitFunction();    
 }
 
+
+- (void)mergeiCloudChanges:(NSNotification*)notification forContext:(NSManagedObjectContext*)moc {
+    [moc mergeChangesFromContextDidSaveNotification:notification]; 
+    
+    NSNotification* refreshNotification = [NSNotification notificationWithName: NOTIFICATION_DATABASE_MERGED object:self userInfo:[notification userInfo]];
+    
+    [[NSNotificationCenter defaultCenter] postNotification:refreshNotification];
+}
+
+// NSNotifications are posted synchronously on the caller's thread
+// make sure to vector this back to the thread we want, in this case
+// the main thread for our views & controller
+- (void)mergeChangesFrom_iCloud:(NSNotification *)notification {
+    NSManagedObjectContext* moc = [self managedObjectContext];
+    
+    // this only works if you used NSMainQueueConcurrencyType
+    // otherwise use a dispatch_async back to the main thread yourself
+    [moc performBlock: ^{
+        [self mergeiCloudChanges:notification forContext:moc];
+    }];
+}
 
 
 @end

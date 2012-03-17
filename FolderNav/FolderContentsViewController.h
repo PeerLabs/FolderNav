@@ -14,7 +14,11 @@
 
 @property (strong, nonatomic) Folder *folder;
 
+@property (strong, nonatomic) UISearchBar *searchBar;
+
 @property (strong, nonatomic) NSManagedObjectContext *managedObjectContext;
 
+
+- (void)updateContents;
 
 @end

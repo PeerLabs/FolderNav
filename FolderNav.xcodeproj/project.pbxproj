@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5A3B301A150BEEFE0027EBF2 /* DummyViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 5A3B3019150BEEFE0027EBF2 /* DummyViewController.m */; };
 		5A8C8FF615001B78003C94F2 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A8C8FF515001B78003C94F2 /* UIKit.framework */; };
 		5A8C8FF815001B78003C94F2 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A8C8FF715001B78003C94F2 /* Foundation.framework */; };
 		5A8C8FFA15001B78003C94F2 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A8C8FF915001B78003C94F2 /* CoreGraphics.framework */; };
@@ -25,6 +24,7 @@
 		5A8C901F15001B79003C94F2 /* CoreData.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A8C8FFB15001B78003C94F2 /* CoreData.framework */; };
 		5A8C902715001B79003C94F2 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 5A8C902515001B79003C94F2 /* InfoPlist.strings */; };
 		5A8C902A15001B79003C94F2 /* FolderNavTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 5A8C902915001B79003C94F2 /* FolderNavTests.m */; };
+		5AACA4D9150E9EB600F7F1D6 /* ImageBarButtonItem.m in Sources */ = {isa = PBXBuildFile; fileRef = 5AACA4D8150E9EB600F7F1D6 /* ImageBarButtonItem.m */; };
 		5AD9649A150AA9BB008D3087 /* deleteButtonImage.png in Resources */ = {isa = PBXBuildFile; fileRef = 5AD96499150AA9BB008D3087 /* deleteButtonImage.png */; };
 		5AD9649D150ABB2B008D3087 /* addButtonImage.png in Resources */ = {isa = PBXBuildFile; fileRef = 5AD9649B150ABB2B008D3087 /* addButtonImage.png */; };
 		5AD9649E150ABB2B008D3087 /* archiveButtonImage.png in Resources */ = {isa = PBXBuildFile; fileRef = 5AD9649C150ABB2B008D3087 /* archiveButtonImage.png */; };
@@ -46,8 +46,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		5A3B3018150BEEFE0027EBF2 /* DummyViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DummyViewController.h; sourceTree = "<group>"; };
-		5A3B3019150BEEFE0027EBF2 /* DummyViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DummyViewController.m; sourceTree = "<group>"; };
 		5A76C76F15037A2200DE219B /* ReadMe.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = ReadMe.txt; sourceTree = "<group>"; };
 		5A8C8FF115001B78003C94F2 /* FolderNav.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FolderNav.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A8C8FF515001B78003C94F2 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
@@ -73,6 +71,8 @@
 		5A8C902815001B79003C94F2 /* FolderNavTests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FolderNavTests.h; sourceTree = "<group>"; };
 		5A8C902915001B79003C94F2 /* FolderNavTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FolderNavTests.m; sourceTree = "<group>"; };
 		5A8C903315001CF8003C94F2 /* DataDefinition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DataDefinition.h; sourceTree = "<group>"; };
+		5AACA4D7150E9EB600F7F1D6 /* ImageBarButtonItem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ImageBarButtonItem.h; sourceTree = "<group>"; };
+		5AACA4D8150E9EB600F7F1D6 /* ImageBarButtonItem.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ImageBarButtonItem.m; sourceTree = "<group>"; };
 		5AD96499150AA9BB008D3087 /* deleteButtonImage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deleteButtonImage.png; sourceTree = "<group>"; };
 		5AD9649B150ABB2B008D3087 /* addButtonImage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = addButtonImage.png; sourceTree = "<group>"; };
 		5AD9649C150ABB2B008D3087 /* archiveButtonImage.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = archiveButtonImage.png; sourceTree = "<group>"; };
@@ -153,8 +153,8 @@
 				5A8C901015001B79003C94F2 /* MasterViewController.m */,
 				5A8C901215001B79003C94F2 /* FolderContentsViewController.h */,
 				5A8C901315001B79003C94F2 /* FolderContentsViewController.m */,
-				5A3B3018150BEEFE0027EBF2 /* DummyViewController.h */,
-				5A3B3019150BEEFE0027EBF2 /* DummyViewController.m */,
+				5AACA4D7150E9EB600F7F1D6 /* ImageBarButtonItem.h */,
+				5AACA4D8150E9EB600F7F1D6 /* ImageBarButtonItem.m */,
 				5A8C900C15001B78003C94F2 /* FolderNav.xcdatamodeld */,
 				5AF03CE0150B931000A73A07 /* Folder.h */,
 				5AF03CE1150B931000A73A07 /* Folder.m */,
@@ -328,7 +328,7 @@
 				5A8C901115001B79003C94F2 /* MasterViewController.m in Sources */,
 				5A8C901415001B79003C94F2 /* FolderContentsViewController.m in Sources */,
 				5AF03CE2150B931000A73A07 /* Folder.m in Sources */,
-				5A3B301A150BEEFE0027EBF2 /* DummyViewController.m in Sources */,
+				5AACA4D9150E9EB600F7F1D6 /* ImageBarButtonItem.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
