@@ -10,7 +10,8 @@
 
 #import "DataDefinition.h"
 
-#import "DetailViewController.h"
+#import "FolderContentsViewController.h"
+#import "Folder.h"
 #import "AppDelegate.h"
 
 
@@ -26,10 +27,11 @@
 @end
 
 @implementation MasterViewController {
-    NSDictionary *deleteAlertUserInfo;
+    // "Private" ivars
+    NSDictionary *alertUserInfo;
 }
 
-@synthesize detailViewController = _detailViewController;
+@synthesize folderContentsViewController = _detailViewController;
 @synthesize fetchedResultsController = __fetchedResultsController;
 @synthesize managedObjectContext = __managedObjectContext;
 
@@ -61,12 +63,12 @@
 
     UIBarButtonItem *addButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(addFolder:)];
     self.navigationItem.rightBarButtonItem = addButton;
-    self.detailViewController = (DetailViewController *)[[self.splitViewController.viewControllers lastObject] topViewController];
+    self.folderContentsViewController = (FolderContentsViewController *)[[self.splitViewController.viewControllers lastObject] topViewController];
     
     
     // Set title 
     
-    self.title = NSLocalizedString(@"Folders", @"Folder view title");
+    self.title = NSLocalizedString(@"Folders", @"Folders view title");
         
     
     // Added to FolderNav:
@@ -80,6 +82,11 @@
     self.searchBar = sb;
     
     self.tableView.tableHeaderView=self.searchBar;
+    
+    
+    // Allow selection in editing mode (so we can change folder names
+    
+    self.tableView.allowsSelectionDuringEditing = YES;
     
     ExitFunction();    
 }
@@ -145,9 +152,12 @@
     NSEntityDescription *entity = [[self.fetchedResultsController fetchRequest] entity];
     NSManagedObject *newManagedObject = [NSEntityDescription insertNewObjectForEntityForName:[entity name] inManagedObjectContext:context];
     
-    [newManagedObject setValue: name forKey: FOLDER_TITLE];
-    [newManagedObject setValue: FOLDER_TYPE_USER_DEFINED forKey: FOLDER_TYPE];
+    // The paranoid can check if newManagedObject is really of class Folder
+    Folder *folder = (Folder *)newManagedObject;
     
+    folder.title   = name;
+    folder.type    = FOLDER_TYPE_USER_DEFINED;
+        
     // Save the context.
     NSError *error = nil;
     if (![context save: &error]) {
@@ -159,6 +169,77 @@
     
     ExitFunction();    
 }
+
+
+- (void)renameFolderAtIndexPath: (NSIndexPath *)indexPath toName: (NSString *)newName
+{
+    EnterFunction();
+    
+    NSManagedObjectContext *context = [self.fetchedResultsController managedObjectContext];
+
+    Folder *folder = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    
+    folder.title = newName;
+    
+    // Save the context.
+    NSError *error = nil;
+    if (![context save: &error]) {
+        // Replace this implementation with code to handle the error appropriately.
+        // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
+        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
+        abort();
+    }
+
+    ExitFunction();    
+}
+
+
+-(void)showDeleteConfirmationAlert
+{
+    EnterFunction();
+    
+    NSString *title   = NSLocalizedString(@"Delete Folder", @"Delete Folder Dialog Title");
+    NSString *message = NSLocalizedString(@""             , @"Delete Folder Dialog Message");
+    
+    NSString *cancelButtonTitle = NSLocalizedString(@"Cancel", @"Cancel");
+    NSString *deleteButtonTitle = NSLocalizedString(@"Delete", @"Delete Folder Delete Button");
+    
+    UIAlertView * alert = [[UIAlertView alloc] initWithTitle:title 
+                                                     message:message 
+                                                    delegate:self 
+                                           cancelButtonTitle:cancelButtonTitle 
+                                           otherButtonTitles:deleteButtonTitle, nil];
+    
+    // This is so we can distinguish between different alerts in the delegate methods.
+    alert.tag = ALERT_VIEW_TAG_DELETE_FOLDER;
+    
+    [alert show];
+    
+    ExitFunction();
+}
+
+
+- (void)permanentlyDeleteFolderAtIndexPath: (NSIndexPath *)indexPath
+{
+    EnterFunction();
+    
+    NSManagedObjectContext *context = [self.fetchedResultsController managedObjectContext];
+    [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
+    
+    NSError *error = nil;
+    if (![context save:&error]) {
+        // Replace this implementation with code to handle the error appropriately.
+        // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
+        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
+        abort();
+    }
+    
+    // Set detail view value to nil.
+    self.folderContentsViewController.folder = nil;
+    
+    ExitFunction();
+}
+
 
 
 #pragma mark -
@@ -178,43 +259,66 @@
     EnterFunction();
         
     if ( alertView.tag == ALERT_VIEW_TAG_NEW_FOLDER ) {
-        NSString *nameEntered = [[alertView textFieldAtIndex:0] text];
-        
-        NSLog(@"Folder Name Alert View, Button clicked: %d, Name Entered: %@", buttonIndex, nameEntered);
         
         if ( buttonIndex == 1 ) {
+            NSString *nameEntered = [[alertView textFieldAtIndex:0] text];
+            NSLog(@"New folder, name entered: %@", nameEntered);
             [self createNewFolderWithName: nameEntered];
         }
     }
     else if ( alertView.tag == ALERT_VIEW_TAG_RENAME_FOLDER ) {
-        NSLog(@"Folder renamed");
+        NSIndexPath *indexPath = [alertUserInfo valueForKey: @"indexPath"];
+
+        if ( buttonIndex == 1 ) {
+            NSString *nameEntered = [[alertView textFieldAtIndex:0] text];
+
+            // Get the index path of the folder to rename out of the 
+            // alertUserInfo ivar, then set it to nil to 
+            // return to its neutral state.
+            
+            [self renameFolderAtIndexPath:indexPath toName:nameEntered];
+            
+            NSLog(@"Folder renamed to: %@", nameEntered);
+            
+            // Make sure the table view is updated with the new name
+            NSArray *array = [NSArray arrayWithObject: indexPath];
+            [self.tableView reloadRowsAtIndexPaths: array
+                                      withRowAnimation: UITableViewRowAnimationNone];
+        }
+        else {
+            
+            [self.tableView deselectRowAtIndexPath:indexPath animated:YES];
+        }
     }
     else if ( alertView.tag == ALERT_VIEW_TAG_DELETE_FOLDER ) {
         
         if ( buttonIndex == 1 ) {
             NSLog(@"User really, really wants to delete folder");
             
-            // Get the index path of the folder to delete out of the 
-            // deleteAlertUserInfo ivar, then set it to nil to 
-            // return to its neutral state.
-            NSIndexPath *indexPath = [deleteAlertUserInfo valueForKey: @"indexPath"];
-            
-            deleteAlertUserInfo = nil;
-            
+            // Get the index path the same way as for the rename case
+            NSIndexPath *indexPath = [alertUserInfo valueForKey: @"indexPath"];
+                        
             [self permanentlyDeleteFolderAtIndexPath: indexPath];
         }
     }
+    
+    // Reset the alert userInfo structure.
+    alertUserInfo = nil;
     
     ExitFunction();    
 }
 
 
+// Enable the OK button for the new/rename alert when there 
+// is at least some text in the text field.
 - (BOOL)alertViewShouldEnableFirstOtherButton: (UIAlertView *)alertView
 {
     EnterFunction();
     
     BOOL answer;
-    if ( alertView.tag == ALERT_VIEW_TAG_NEW_FOLDER ) {
+    if ( alertView.tag == ALERT_VIEW_TAG_NEW_FOLDER 
+        || alertView.tag == ALERT_VIEW_TAG_RENAME_FOLDER) {
+        
         answer = [[[alertView textFieldAtIndex:0] text] length] > 0;
     }
     else {
@@ -228,6 +332,7 @@
 
 
 #pragma mark - Table View
+#pragma mark Data source methods
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
@@ -255,7 +360,7 @@
     
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell"];
     [self configureCell:cell atIndexPath:indexPath];
-    
+        
     ExitFunction();
 
     return cell;
@@ -286,7 +391,7 @@
     
     if (editingStyle == UITableViewCellEditingStyleDelete) {
         
-        deleteAlertUserInfo = [NSDictionary dictionaryWithObject:indexPath forKey:@"indexPath"];
+        alertUserInfo = [NSDictionary dictionaryWithObject:indexPath forKey:@"indexPath"];
         
         [self showDeleteConfirmationAlert];
     }   
@@ -305,15 +410,124 @@
     return NO;
 }
 
+
+#pragma mark Delegate methods
+
+// This is where it is determined what happens when the user taps a row.
+//
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     EnterFunction();
+    if ( !self.editing ) {
+        
+        // Normal case, change the right hand pane's content
+        Folder *folder = [[self fetchedResultsController] objectAtIndexPath:indexPath];
+        self.folderContentsViewController.folder = folder;
+    }
+    else {
+        
+        // When editing, selection means rename
+        
+        Folder *folder = [[self fetchedResultsController] objectAtIndexPath:indexPath];
+        
+        // In order to have clean access to information about the folder to 
+        // delete, we store it in a "userInfo" structure implemented as an
+        // old fashioned ivar. Same ivar as the one used when confirming
+        // deletion of a folder.
+        
+        alertUserInfo = [NSDictionary dictionaryWithObject:indexPath forKey:@"indexPath"];
+        
+        // Open a new folder for the user to enter the name
+        
+        NSString *renameFolderDialogTitle   = NSLocalizedString(@"New Folder Name", @"Rename Folder Dialog Title");
+        NSString *renameFolderDialogMessage = NSLocalizedString(@""               , @"Rename Folder Dialog Message");
+        
+        NSString *renameFolderDialogCancelButtonTitle = NSLocalizedString(@"Cancel", @"Cancel");
+        NSString *renameFolderDialogOKButtonTitle     = NSLocalizedString(@"Rename", @"Rename Folder Dialog OK");
+        
+        UIAlertView * alert = [[UIAlertView alloc] initWithTitle:renameFolderDialogTitle 
+                                                         message:renameFolderDialogMessage 
+                                                        delegate:self 
+                                               cancelButtonTitle:renameFolderDialogCancelButtonTitle 
+                                               otherButtonTitles:renameFolderDialogOKButtonTitle, nil];
+        
+        // This is so we can distinguish between different alerts in the delegate methods.
+        alert.tag = ALERT_VIEW_TAG_RENAME_FOLDER;
+        
+        alert.alertViewStyle = UIAlertViewStylePlainTextInput;
+        
+        [alert show];  
     
-    NSManagedObject *object = [[self fetchedResultsController] objectAtIndexPath:indexPath];
-    self.detailViewController.detailItem = object;
+        NSLog(@"Rename folder: %@", folder.title);
+    }
+    ExitFunction();
+}
+
+// When the user taps a row, this is a mehtod to intercept the tap and stop it.
+// Used to ensure that the permanent folders can't be renamed.
+//
+- (NSIndexPath *)tableView:(UITableView *)tableView willSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    EnterFunction();
+
+    if ( !self.editing ) {
+        // Normal situation, do nothing
+        return indexPath;
+    }
+    else {
+        // When editing, tapping a row means rename the folder.
+        // As the permanent folders can't renamed, we return 
+        // nil in that case, to stop the selection.
+        if ( [self tableView:tableView canEditRowAtIndexPath:indexPath] ) {
+            return indexPath;
+        }
+        else {
+            return nil;
+        }
+    }
     
     ExitFunction();
 }
+
+
+
+#pragma mark Configure cell
+
+- (void)configureCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
+{
+    EnterFunction();
+    
+    Folder *folder = [self.fetchedResultsController objectAtIndexPath:indexPath];
+    cell.textLabel.text = folder.title;
+    
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    
+    AppDelegate *appDel = (AppDelegate *)[[UIApplication sharedApplication] delegate];
+    
+    if ( indexPath.row < appDel.permanentFolderTypes.count ) {
+        // One of the permanent folders, has an icon.
+        switch (indexPath.row) {
+            case 0:
+                cell.imageView.image=[UIImage imageNamed:@"currentUnfiledFolderIcon"];
+                break;
+            case 1:
+                cell.imageView.image=[UIImage imageNamed:@"draftsFolderIcon"];
+                break;
+            case 2:
+                cell.imageView.image=[UIImage imageNamed:@"trashFolderIcon"];
+                break;
+            default:
+                cell.imageView.image=nil;
+                break;
+        }
+    }
+    else {
+        cell.imageView.image=nil;
+    }
+        
+    ExitFunction();
+}
+
 
 #pragma mark - Fetched results controller
 
@@ -426,17 +640,6 @@
 }
  */
 
-- (void)configureCell:(UITableViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
-{
-    EnterFunction();
-    
-    NSManagedObject *object = [self.fetchedResultsController objectAtIndexPath:indexPath];
-    cell.textLabel.text = [object valueForKey:FOLDER_TITLE];
-    
-    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-    
-    ExitFunction();
-}
 
 
 // This method defines the fetch request that will retrieve the folders
@@ -503,57 +706,6 @@
     ExitFunction();
 
     return fetchRequest;
-}
-
-
-
-#pragma mark -
-#pragma mark Folder handling methods
-
--(void)showDeleteConfirmationAlert
-{
-    EnterFunction();
-    
-    NSString *title   = NSLocalizedString(@"Delete Folder", @"Delete Folder Dialog Title");
-    NSString *message = NSLocalizedString(@""             , @"Delete Folder Dialog Message");
-    
-    NSString *cancelButtonTitle = NSLocalizedString(@"Cancel", @"Cancel");
-    NSString *deleteButtonTitle = NSLocalizedString(@"Delete", @"Delete Folder Delete Button");
-    
-    UIAlertView * alert = [[UIAlertView alloc] initWithTitle:title 
-                                                     message:message 
-                                                    delegate:self 
-                                           cancelButtonTitle:cancelButtonTitle 
-                                           otherButtonTitles:deleteButtonTitle, nil];
-    
-    // This is so we can distinguish between different alerts in the delegate methods.
-    alert.tag = ALERT_VIEW_TAG_DELETE_FOLDER;
-    
-    [alert show];
-    
-    ExitFunction();
-}
-
-
-- (void)permanentlyDeleteFolderAtIndexPath: (NSIndexPath *)indexPath
-{
-    EnterFunction();
-    
-    NSManagedObjectContext *context = [self.fetchedResultsController managedObjectContext];
-    [context deleteObject:[self.fetchedResultsController objectAtIndexPath:indexPath]];
-    
-    NSError *error = nil;
-    if (![context save:&error]) {
-        // Replace this implementation with code to handle the error appropriately.
-        // abort() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development. 
-        NSLog(@"Unresolved error %@, %@", error, [error userInfo]);
-        abort();
-    }
-    
-    // Set detail view value to nil.
-    self.detailViewController.detailItem = nil;
-
-    ExitFunction();
 }
 
 

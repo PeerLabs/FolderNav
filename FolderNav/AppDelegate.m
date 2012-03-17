@@ -11,6 +11,8 @@
 #import "MasterViewController.h"
 
 #import "DataDefinition.h"
+#import "Folder.h"
+#import "FolderContentsViewController.h"
 
 @implementation AppDelegate
 
@@ -49,18 +51,92 @@
     
     // Set up controllers
     
-    UISplitViewController *splitViewController = (UISplitViewController *)self.window.rootViewController;
+    UISplitViewController  *splitViewController = (UISplitViewController *)self.window.rootViewController;
     UINavigationController *navigationController = [splitViewController.viewControllers lastObject];
+        
     splitViewController.delegate = (id)navigationController.topViewController;
 
     UINavigationController *masterNavigationController = [splitViewController.viewControllers objectAtIndex:0];
-    MasterViewController *controller = (MasterViewController *)masterNavigationController.topViewController;
-    controller.managedObjectContext = self.managedObjectContext;
-    return YES;
+    MasterViewController   *controller = (MasterViewController *)masterNavigationController.topViewController;
+    controller.managedObjectContext    = self.managedObjectContext;
     
+    // Get detail view's navigation item
+    
+    // Be paranoid
+    FolderContentsViewController *detailViewController = nil;
+
+    if ( [navigationController.topViewController isKindOfClass:[FolderContentsViewController class]] ) {
+        detailViewController = (FolderContentsViewController *)navigationController.topViewController;
+        detailViewController.managedObjectContext = self.managedObjectContext;
+    }
+    
+    UINavigationItem *navItem = [detailViewController navigationItem];
+
+
+    // Set title
+    
+    navItem.title = @"New Title";
+
+    
+    // Set right hand buttons and search field on nav bar
+    
+    UIBarButtonItem *searchBarItem = [self makeSearchFieldBarButtonItemWithDelegate:nil];
+    
+    UIBarButtonItem *addObjectBarButtonItem = [self makeBarButtonItem:@"addButtonImage" target:detailViewController action:@selector(addObject:)];
+
+    UIBarButtonItem *archiveObjectBarButtonItem = [self makeBarButtonItem:@"archiveButtonImage"target:detailViewController action:@selector(renameObject:)];
+    
+    UIBarButtonItem *deleteObjectBarButtonItem = [self makeBarButtonItem:@"deleteButtonImage" target:detailViewController action:@selector(deleteObject:)];
+    
+    
+    navItem.rightBarButtonItems = [NSArray arrayWithObjects: deleteObjectBarButtonItem, archiveObjectBarButtonItem, addObjectBarButtonItem, searchBarItem, nil];
+
     ExitFunction();    
+
+    return YES;
 }
-							
+
+
+// In order to get a UIBarButtonItem with an image, a trick is necessary:
+// 
+// 1. Make an empty view
+// 2. Make an image view to hold the image
+// 3. Make a blank button with a target and an action, like any button
+// 4. Add the image view and the button to the custom view
+// 5. Make the bar button item with the custom view
+//
+- (UIBarButtonItem *)makeBarButtonItem: (NSString *)imageName target: (id)target action: (SEL) selector
+{
+    UIView *customView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 40, 40)];
+    
+    UIButton *button = [[UIButton alloc] initWithFrame: CGRectMake(0, 0, 40, 40)];
+    button.showsTouchWhenHighlighted = YES;
+    
+    [button addTarget:target action: selector forControlEvents:UIControlEventTouchUpInside];
+    
+    UIImage *itemImage = [UIImage imageNamed: imageName];
+    
+    UIImageView *itemImageView = [[UIImageView alloc] initWithImage: itemImage];
+    itemImageView.frame = CGRectMake(8, 8, 24, 24);
+    
+    [customView addSubview:itemImageView];
+    [customView addSubview:button];
+
+    return [[UIBarButtonItem alloc] initWithCustomView:customView];
+}
+
+
+- (UIBarButtonItem *)makeSearchFieldBarButtonItemWithDelegate: (id)aDelegate
+{
+    UISearchBar *searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, 175, 44)];
+    
+    // TODO: set the search bar delegate to something sensible
+    //searchBar.delegate = self;
+    
+    return [[UIBarButtonItem alloc] initWithCustomView:searchBar]; 
+}
+
+
 - (void)applicationWillResignActive:(UIApplication *)application
 {
     EnterFunction();
@@ -272,7 +348,7 @@
     NSString *format = @"self.type = %@";
     NSPredicate *p = nil;
     NSArray *filteredFolders = nil;
-    NSManagedObject *folder = nil;
+    Folder *folder = nil;
     NSString *title = nil;
 
     
@@ -291,8 +367,12 @@
         
         title = NSLocalizedString(FOLDER_TITLE_EN_CURRENT_UNFILED, FOLDER_TITLE_EN_CURRENT_UNFILED);
         
+        folder.type = FOLDER_TYPE_CURRENT_UNFILED;
+        folder.title = title;
+        /*
         [folder setValue: FOLDER_TYPE_CURRENT_UNFILED forKey: FOLDER_TYPE];
         [folder setValue: title forKey: FOLDER_TITLE];
+         */
     }
     
 
@@ -311,8 +391,12 @@
         
         title = NSLocalizedString(FOLDER_TITLE_EN_TRASH, FOLDER_TITLE_EN_TRASH);
         
+        folder.type = FOLDER_TYPE_TRASH;
+        folder.title = title;
+        /*
         [folder setValue:FOLDER_TYPE_TRASH forKey: FOLDER_TYPE];
         [folder setValue:title forKey: FOLDER_TITLE];        
+         */
     }
     
     
@@ -331,12 +415,17 @@
         
         title = NSLocalizedString(FOLDER_TITLE_EN_DRAFTS, FOLDER_TITLE_EN_DRAFTS);
         
+        folder.type = FOLDER_TYPE_DRAFTS;
+        folder.title = title;
+
+        /*
         [folder setValue:FOLDER_TYPE_DRAFTS forKey: FOLDER_TYPE];
         [folder setValue:title forKey: FOLDER_TITLE];        
+         */
     }
     
     if (![self.managedObjectContext save:&error]) {
-        NSLog(@"Error saving initial folder database: %@", [error localizedDescription]);
+        DLog(@"Error saving initial folder database: %@", [error localizedDescription]);
     }      
         
     ExitFunction();    

@@ -15,18 +15,27 @@
 #ifndef FolderNav_DataDefinition_h
 #define FolderNav_DataDefinition_h
 
+// Entity names for the data model, 
+// should correspond ot the class names.
 #define FOLDER_ENTITY @"Folder"
-#define OBJECT_ENTITY @"Object"
+#define FOLDERCONTENT_ENTITY @"FolderContent"
 
+// Property names for the entities.
+// Used in predicates (filters) and
+// sort descriptors
 #define FOLDER_TITLE @"title"
 #define FOLDER_TYPE  @"type"
 
 #define OBJECT_TITLE @"title"
 #define OBJECT_TEXT  @"text"
 
+
+// Folder types, permanent folders
 #define FOLDER_TYPE_CURRENT_UNFILED @"CurrentUnfiled"
 #define FOLDER_TYPE_TRASH           @"Trash"
 #define FOLDER_TYPE_DRAFTS          @"Drafts"
+
+// Folder type flag for all user defined folders
 #define FOLDER_TYPE_USER_DEFINED    @"UserDefined"
 
 
