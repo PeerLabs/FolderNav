@@ -96,7 +96,7 @@ void PanicExit(NSError * err) {
     //
     // Commenting out search bar until final designs have been decided.
     //
-    // UIBarButtonItem *searchBarItem = [self makeSearchFieldBarButtonItemWithDelegate:
+    // UIBarButtonItem *searchBarItem = [self makeSearchFieldBarButtonItemWithDelegate: detailViewController];
     // detailViewController.searchBar = searchBarItem;
     
     UIBarButtonItem *addObjectBarButtonItem = [[ImageBarButtonItem alloc] initWithImageName:@"addButtonImage" target:detailViewController action:@selector(addObject:)];
@@ -126,8 +126,7 @@ void PanicExit(NSError * err) {
 {
     UISearchBar *searchBar = [[UISearchBar alloc] initWithFrame:CGRectMake(0, 0, 175, 44)];
     
-    // TODO: set the search bar delegate to something sensible
-    //searchBar.delegate = self;
+    searchBar.delegate = aDelegate;
     
     return [[UIBarButtonItem alloc] initWithCustomView:searchBar]; 
 }
